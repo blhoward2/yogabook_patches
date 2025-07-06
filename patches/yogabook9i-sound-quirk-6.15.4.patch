@@ -1,7 +1,15 @@
 diff -Naur linux-6.15.4.orig/sound/pci/hda/patch_realtek.c linux-6.15.4/sound/pci/hda/patch_realtek.c
---- linux-6.15.4.orig/sound/pci/hda/patch_realtek.c	2025-07-06 13:46:26.439531277 -0400
-+++ linux-6.15.4/sound/pci/hda/patch_realtek.c	2025-07-06 13:46:26.589488484 -0400
-@@ -11253,7 +11253,7 @@
+--- linux-6.15.4.orig/sound/pci/hda/patch_realtek.c	2025-07-06 14:31:50.608184803 -0400
++++ linux-6.15.4/sound/pci/hda/patch_realtek.c	2025-07-06 14:31:50.742937848 -0400
+@@ -6597,6 +6597,7 @@
+ 					  const struct hda_fixup *fix, int action)
+ {
+ 	if (action == HDA_FIXUP_ACT_PRE_PROBE) {
++	snd_printk(KERN_INFO "✅ Yoga Book 9i fixup: SPEAKER2_TO_DAC1 applied\n");
+ 		static const hda_nid_t conn[] = { 0x02 };
+ 		snd_hda_override_conn_list(codec, 0x17, ARRAY_SIZE(conn), conn);
+ 	}
+@@ -11253,7 +11254,7 @@
  	SND_PCI_QUIRK(0x17aa, 0x3801, "Lenovo Yoga9 14IAP7", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
  	HDA_CODEC_QUIRK(0x17aa, 0x3802, "DuetITL 2021", ALC287_FIXUP_YOGA7_14ITL_SPEAKERS),
  	SND_PCI_QUIRK(0x17aa, 0x3802, "Lenovo Yoga Pro 9 14IRP8", ALC287_FIXUP_TAS2781_I2C),
