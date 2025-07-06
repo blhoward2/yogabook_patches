@@ -1,11 +1,11 @@
 diff -Naur linux-6.15.4.orig/sound/pci/hda/patch_realtek.c linux-6.15.4/sound/pci/hda/patch_realtek.c
---- linux-6.15.4.orig/sound/pci/hda/patch_realtek.c	2025-07-06 14:31:50.608184803 -0400
-+++ linux-6.15.4/sound/pci/hda/patch_realtek.c	2025-07-06 14:31:50.742937848 -0400
+--- linux-6.15.4.orig/sound/pci/hda/patch_realtek.c	2025-07-06 14:55:47.329305420 -0400
++++ linux-6.15.4/sound/pci/hda/patch_realtek.c	2025-07-06 14:55:47.470703629 -0400
 @@ -6597,6 +6597,7 @@
  					  const struct hda_fixup *fix, int action)
  {
  	if (action == HDA_FIXUP_ACT_PRE_PROBE) {
-+	snd_printk(KERN_INFO "✅ Yoga Book 9i fixup: SPEAKER2_TO_DAC1 applied\n");
++	printk(KERN_INFO "✅ Yoga Book 9i fixup: SPEAKER2_TO_DAC1 applied\n");
  		static const hda_nid_t conn[] = { 0x02 };
  		snd_hda_override_conn_list(codec, 0x17, ARRAY_SIZE(conn), conn);
  	}
