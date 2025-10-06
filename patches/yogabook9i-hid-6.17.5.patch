@@ -1,0 +1,50 @@
+diff -uNr linux-6.17.5.orig/drivers/hid/hid-ids.h linux-6.17.5/drivers/hid/hid-ids.h
+--- linux-6.17.5.orig/drivers/hid/hid-ids.h	2025-10-26 14:19:43.118330013 -0400
++++ linux-6.17.5/drivers/hid/hid-ids.h	2025-10-26 14:22:17.017643228 -0400
+@@ -830,6 +830,7 @@
+ #define USB_DEVICE_ID_LENOVO_X1_TAB3	0x60b5
+ #define USB_DEVICE_ID_LENOVO_X12_TAB	0x60fe
+ #define USB_DEVICE_ID_LENOVO_X12_TAB2	0x61ae
++#define USB_DEVICE_ID_LENOVO_YOGABOOK9I	0x6161
+ #define USB_DEVICE_ID_LENOVO_OPTICAL_USB_MOUSE_600E	0x600e
+ #define USB_DEVICE_ID_LENOVO_PIXART_USB_MOUSE_608D	0x608d
+ #define USB_DEVICE_ID_LENOVO_PIXART_USB_MOUSE_6019	0x6019
+
+diff -uNr linux-6.17.5.orig/drivers/hid/hid-multitouch.c linux-6.17.5/drivers/hid/hid-multitouch.c
+--- linux-6.17.5.orig/drivers/hid/hid-multitouch.c	2025-10-26 14:22:17.017643228 -0400
++++ linux-6.17.5/drivers/hid/hid-multitouch.c	2025-10-26 14:22:17.017643228 -0400
+@@ -222,6 +222,7 @@
+ #define MT_CLS_RAZER_BLADE_STEALTH		0x0112
+ #define MT_CLS_SMART_TECH			0x0113
+ #define MT_CLS_APPLE_TOUCHBAR			0x0114
++#define MT_CLS_YOGABOOK9I			0x0115
+ #define MT_CLS_SIS				0x0457
+ 
+ #define MT_DEFAULT_MAXCONTACT	10
+@@ -418,6 +419,12 @@
+ 			MT_QUIRK_ALWAYS_VALID |
+ 			MT_QUIRK_CONTACT_CNT_ACCURATE,
+ 	},
++	{ .name = MT_CLS_YOGABOOK9I,
++		.quirks = MT_QUIRK_ALWAYS_VALID |
++			MT_QUIRK_FORCE_MULTI_INPUT |
++			MT_QUIRK_SEPARATE_APP_REPORT |
++			MT_QUIRK_HOVERING,
++	},
+ 	{ }
+ };
+ 
+@@ -2217,6 +2224,12 @@
+ 			   USB_VENDOR_ID_LENOVO,
+ 			   USB_DEVICE_ID_LENOVO_X12_TAB2) },
+ 
++	/* Lenovo Yoga Book 9i */
++	{ .driver_data = MT_CLS_YOGABOOK9I,
++		HID_DEVICE(BUS_USB, HID_GROUP_MULTITOUCH_WIN_8, 
++			   USB_VENDOR_ID_LENOVO, 
++			   USB_DEVICE_ID_LENOVO_YOGABOOK9I) },     
++
+ 	/* Logitech devices */
+ 	{ .driver_data = MT_CLS_NSMU,
+ 		HID_DEVICE(BUS_BLUETOOTH, HID_GROUP_MULTITOUCH_WIN_8,
+

@@ -1,0 +1,26 @@
+diff -uNr linux-6.17.3.orig/drivers/hid/hid-input.c linux-6.17.3/drivers/hid/hid-input.c
+--- linux-6.17.3.orig/drivers/hid/hid-input.c	2025-10-15 06:04:23.000000000 -0400
++++ linux-6.17.3/drivers/hid/hid-input.c	2025-10-19 21:24:28.696442280 -0400
+@@ -674,6 +674,20 @@
+ 	unsigned int i = 0;
+ 	unsigned long *bit = NULL;
+ 
++	if ((usage->hid >> 16) == 0x0D) {  // HID usage page 0x0D = Digitizers
++	    struct input_dev *input = hidinput->input;
++            struct hid_device *hdev = to_hid_device(input->dev.parent);
++
++	    printk(KERN_INFO "YogaBook9i: [Device 0x%04x:0x%04x] usage=0x%08x (page=0x%04x id=0x%04x) reportID=%d type=%d code=%d\n",
++	       hdev->vendor, hdev->product,
++	       usage->hid,
++	       usage->hid >> 16,
++	       usage->hid & 0xFFFF,
++	       field->report->id,
++	       field->report_type,
++	       usage->code);
++        }
++
+ 	field->hidinput = hidinput;
+ 
+ 	if (field->flags & HID_MAIN_ITEM_CONSTANT)
+
+
