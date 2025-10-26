@@ -5,17 +5,21 @@
 On systems where a single composite USB HID device exposes multiple input interfaces (e.g. `touchscreen`, `tablet`, `stylus`) with the same **vendor** and **product IDs**, GNOME’s **Mutter** and **gnome-settings-daemon** treat them as one logical device.
 
 This is because Mutter’s `meta_input_device_generate_id()` builds device IDs from:
+
 ```c
 g_strdup_printf("%04x:%04x", vendor_id, product_id);
 ```
+
 Optionally, if present, it appends the USB serial.  
 
 When multiple subinterfaces share those same identifiers (no serial and same VID:PID), all end up under the same settings path, e.g.:
-```
+
+```bash
 /org/gnome/desktop/peripherals/tablets/17ef:6161/
 ```
 
 Consequences:
+
 - Both touchscreens or pens appear merged in Settings.  
 - Calibrating or mapping one affects all.  
 - Only one settings entry exists in DConf.  
@@ -53,7 +57,8 @@ We extend Mutter’s ID generation to:
 5. The new ID becomes canonical and persists through restarts.
 
 Example:
-```
+
+```bash
 Before: /org/gnome/desktop/peripherals/tablets/17ef:6161/
 After:
   /org/gnome/desktop/peripherals/tablets/17ef:6161-if01/
