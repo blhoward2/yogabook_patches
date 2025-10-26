@@ -6,6 +6,22 @@ Most things work out of the box without issue, with a recent enough kernel and p
 
 Use rEFInd Boot Manager to allow for touch at the bootloader stage.
 
+## Kernel Command Lines
+
+You need to use the following kernel command-line arguments when booting:
+
+    mem_sleep_default=deep
+    reboot=pci
+    apm=power_off
+    i915.force_probe=7d51
+    i915.enable_psr=1
+    i915.enable_fbc=1
+    i915.enable_dc=3
+    i915.modeset=1
+    nomodeset=0
+    vga=off
+    video=eDP-1:panel_orientation=upside_down
+
 ### NixOS
 
 With some scripting it is possible to create new entries when systemd-boot adds generations, or you can manually update rEFInd each time.
