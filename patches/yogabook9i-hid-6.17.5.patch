@@ -30,7 +30,7 @@ diff -uNr linux-6.17.5.orig/drivers/hid/hid-multitouch.c linux-6.17.5/drivers/hi
 +			MT_QUIRK_FORCE_MULTI_INPUT |
 +			MT_QUIRK_SEPARATE_APP_REPORT |
 +			MT_QUIRK_HOVERING | 
-+			MT_QUIRK_STICKY_FINGERS,
++			MT_QUIRK_NOT_SEEN_MEANS_UP,
 +	},
  	{ }
  };
