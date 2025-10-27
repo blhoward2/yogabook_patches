@@ -21,7 +21,7 @@ diff -uNr linux-6.17.5.orig/drivers/hid/hid-multitouch.c linux-6.17.5/drivers/hi
  #define MT_CLS_SIS				0x0457
  
  #define MT_DEFAULT_MAXCONTACT	10
-@@ -418,6 +419,12 @@
+@@ -418,6 +419,13 @@
  			MT_QUIRK_ALWAYS_VALID |
  			MT_QUIRK_CONTACT_CNT_ACCURATE,
  	},
@@ -29,12 +29,13 @@ diff -uNr linux-6.17.5.orig/drivers/hid/hid-multitouch.c linux-6.17.5/drivers/hi
 +		.quirks = MT_QUIRK_ALWAYS_VALID |
 +			MT_QUIRK_FORCE_MULTI_INPUT |
 +			MT_QUIRK_SEPARATE_APP_REPORT |
-+			MT_QUIRK_HOVERING,
++			MT_QUIRK_HOVERING | 
++			MT_QUIRK_STICKY_FINGERS,
 +	},
  	{ }
  };
  
-@@ -2217,6 +2224,12 @@
+@@ -2217,6 +2225,12 @@
  			   USB_VENDOR_ID_LENOVO,
  			   USB_DEVICE_ID_LENOVO_X12_TAB2) },
  
