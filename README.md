@@ -59,34 +59,14 @@ You must apply udev rules to ensure that libinput groups the devices by the phys
 ```nixos
 { pkgs, ... }:
 
-let
-  libinputDeviceGroupWrapper = pkgs.writeShellScriptBin "libinput-device-group-wrapper" ''
-    case "$DEVNAME" in
-      /dev/input/event9)
-        echo "LIBINPUT_DEVICE_GROUP=group_top"
-        ;;
-      /dev/input/event10)
-        echo "LIBINPUT_DEVICE_GROUP=group_bottom"
-        ;;
-      /dev/input/event11)
-        echo "LIBINPUT_DEVICE_GROUP=group_top"
-        ;;
-      /dev/input/event12)
-        echo "LIBINPUT_DEVICE_GROUP=group_bottom"
-        ;;
-      *)
-        exec ${pkgs.libinput}/lib/udev/libinput-device-group "$@"
-        ;;
-    esac
-  '';
-in
 {
-  environment.systemPackages = [
-    libinputDeviceGroupWrapper
-  ];
-
-  services.udev.extraRules = ''
-    IMPORT{program}="${libinputDeviceGroupWrapper}/bin/libinput-device-group-wrapper %S%p"
+  services.udev.extraRules = ''     
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"    
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Keyboard", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Emulated Touchpad", ENV{LIBINPUT_IGNORE_DEVICE}="1"
   '';
 }
 ```
@@ -98,34 +78,13 @@ sudo nixos-rebuild switch
 #### Others
 
 ```bash
- 
-sudo tee /usr/local/bin/yoga_libinput_groupings.sh > /dev/null <<'EOF'
-#!/bin/bash
-case "$DEVNAME" in
-  /dev/input/event9)
-    echo "LIBINPUT_DEVICE_GROUP=group_top"
-    ;;
-  /dev/input/event10)
-    echo "LIBINPUT_DEVICE_GROUP=group_bottom"
-    ;;
-  /dev/input/event11)
-    echo "LIBINPUT_DEVICE_GROUP=group_top"
-    ;;
-  /dev/input/event12)
-    echo "LIBINPUT_DEVICE_GROUP=group_bottom"
-    ;;
-  *)
-    exec /lib/udev/libinput-device-group "$@"
-    ;;
-esac
 
-EOF
-
-```
-
-```bash
-
-sudo chmod +x /usr/local/bin/yoga_libinput_groupings.sh
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"    
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Keyboard", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Emulated Touchpad", ENV{LIBINPUT_IGNORE_DEVICE}="1"
 
 ```
 
@@ -135,7 +94,7 @@ Then reboot
 
 Running ```sudo libinput list-devices``` should now return:
 
-**Note:** You should have separate eventx devices for each input:
+**Note:** You should have separate eventx devices for each input. Here:
 
 - event9 = top touch
 - event10 = bottom touch
@@ -146,7 +105,7 @@ Running ```sudo libinput list-devices``` should now return:
 
 ```log
 
-Device:                  INGENIC Gadget Serial and keyboard
+Device:                  INGENIC Gadget Serial and keyboard Touchscreen Top
 Kernel:                  /dev/input/event9
 Id:                      usb:17ef:6161
 Group:                   6
@@ -172,7 +131,7 @@ Accel profiles:          n/a
 Rotation:                0.0
 Area rectangle:          n/a
 
-Device:                  INGENIC Gadget Serial and keyboard
+Device:                  INGENIC Gadget Serial and keyboard Touchscreen Bottom
 Kernel:                  /dev/input/event10
 Id:                      usb:17ef:6161
 Group:                   7
@@ -198,7 +157,7 @@ Accel profiles:          n/a
 Rotation:                0.0
 Area rectangle:          n/a
 
-Device:                  INGENIC Gadget Serial and keyboard
+Device:                  INGENIC Gadget Serial and keyboard Stylus Up
 Kernel:                  /dev/input/event11
 Id:                      usb:17ef:6161
 Group:                   6
@@ -224,7 +183,7 @@ Accel profiles:          none
 Rotation:                n/a
 Area rectangle:          n/a
 
-Device:                  INGENIC Gadget Serial and keyboard
+Device:                  INGENIC Gadget Serial and keyboard Stylus Bottom
 Kernel:                  /dev/input/event12
 Id:                      usb:17ef:6161
 Group:                   7
