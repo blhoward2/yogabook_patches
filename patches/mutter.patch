@@ -1,0 +1,264 @@
+diff --git a/clutter/clutter/clutter-input-device.c b/clutter/clutter/clutter-input-device.c
+index 313ea8f52f..bd95505b6c 100644
+--- a/clutter/clutter/clutter-input-device.c
++++ b/clutter/clutter/clutter-input-device.c
+@@ -64,6 +64,7 @@ enum
+   PROP_VENDOR_ID,
+   PROP_PRODUCT_ID,
+   PROP_BUS_TYPE,
++  PROP_CUSTOM_ID,
+ 
+   PROP_N_STRIPS,
+   PROP_N_RINGS,
+@@ -92,6 +93,7 @@ struct _ClutterInputDevicePrivate
+   guint vendor_id;
+   guint product_id;
+   guint bus_type;
++  char *custom_id;
+   char *node_path;
+ 
+   int n_rings;
+@@ -213,6 +215,10 @@ clutter_input_device_set_property (GObject      *gobject,
+       priv->bus_type = g_value_get_uint (value);
+       break;
+ 
++    case PROP_CUSTOM_ID:
++      priv->custom_id = g_value_dup_string (value);
++      break;
++
+     case PROP_N_RINGS:
+       priv->n_rings = g_value_get_int (value);
+       break;
+@@ -291,6 +297,10 @@ clutter_input_device_get_property (GObject    *gobject,
+       g_value_set_uint (value, priv->bus_type);
+       break;
+ 
++    case PROP_CUSTOM_ID:
++      g_value_set_string (value, priv->custom_id);
++      break;
++
+     case PROP_N_RINGS:
+       g_value_set_int (value, priv->n_rings);
+       break;
+@@ -433,6 +443,19 @@ clutter_input_device_class_init (ClutterInputDeviceClass *klass)
+                        G_PARAM_READWRITE |
+                        G_PARAM_CONSTRUCT_ONLY);
+ 
++  /**
++   * ClutterInputDevice:custom_id:
++   *
++   * Custom ID of this device.
++   */
++  obj_props[PROP_CUSTOM_ID] =
++    g_param_spec_string ("custom-id", NULL, NULL,
++                         NULL,
++                         G_PARAM_READWRITE |
++                         G_PARAM_STATIC_STRINGS |
++                         G_PARAM_CONSTRUCT_ONLY);
++
++
+   obj_props[PROP_N_RINGS] =
+     g_param_spec_int ("n-rings", NULL, NULL,
+                       0, G_MAXINT, 0,
+@@ -653,6 +676,28 @@ clutter_input_device_get_bus_type (ClutterInputDevice *device)
+   return priv->bus_type;
+ }
+ 
++/**
++ * clutter_input_device_get_custom_id:
++ * @device: a physical #ClutterInputDevice
++ *
++ * Gets the custom id of this device passed by udev.
++ *
++ * Returns: the custom id
++ */
++const gchar *
++clutter_input_device_get_custom_id (ClutterInputDevice *device)
++{
++  ClutterInputDevicePrivate *priv =
++    clutter_input_device_get_instance_private (device);
++
++  g_return_val_if_fail (CLUTTER_IS_INPUT_DEVICE (device), NULL);
++  g_return_val_if_fail (clutter_input_device_get_device_mode (device) != CLUTTER_INPUT_MODE_LOGICAL, NULL);
++
++  if (!priv->custom_id) return NULL;
++  else return priv->custom_id;
++
++}
++
+ gint
+ clutter_input_device_get_n_rings (ClutterInputDevice *device)
+ {
+diff --git a/clutter/clutter/clutter-input-device.h b/clutter/clutter/clutter-input-device.h
+index 5ad8cb9351..fa4a1eeb76 100644
+--- a/clutter/clutter/clutter-input-device.h
++++ b/clutter/clutter/clutter-input-device.h
+@@ -84,6 +84,8 @@ CLUTTER_EXPORT
+ guint                   clutter_input_device_get_product_id     (ClutterInputDevice *device);
+ CLUTTER_EXPORT
+ guint                   clutter_input_device_get_bus_type       (ClutterInputDevice *device);
++CLUTTER_EXPORT
++const gchar *           clutter_input_device_get_custom_id     (ClutterInputDevice *device);
+ 
+ CLUTTER_EXPORT
+ gint                    clutter_input_device_get_n_rings        (ClutterInputDevice *device);
+diff --git a/src/backends/meta-input-mapper.c b/src/backends/meta-input-mapper.c
+index a0d123ea1d..be4b7086dd 100644
+--- a/src/backends/meta-input-mapper.c
++++ b/src/backends/meta-input-mapper.c
+@@ -134,7 +134,7 @@ G_DEFINE_TYPE_WITH_CODE (MetaInputMapper, meta_input_mapper,
+ static GSettings *
+ get_device_settings (ClutterInputDevice *device)
+ {
+-  const char *group, *schema;
++  const char *group, *schema, *custom_id;
+   guint vendor, product;
+   ClutterInputDeviceType type;
+   GSettings *settings;
+@@ -163,8 +163,18 @@ get_device_settings (ClutterInputDevice *device)
+ 
+   vendor = clutter_input_device_get_vendor_id (device);
+   product = clutter_input_device_get_product_id (device);
++  custom_id = clutter_input_device_get_custom_id (device);
++
++  if (!custom_id)
++    {
+   path = g_strdup_printf ("/org/gnome/desktop/peripherals/%s/%.4x:%.4x/",
+                           group, vendor, product);
++    }
++    else
++    {
++      path = g_strdup_printf ("/org/gnome/desktop/peripherals/%s/%s/",
++                              group, custom_id);
++    }
+ 
+   settings = g_settings_new_with_path (schema, path);
+   g_free (path);
+diff --git a/src/backends/meta-input-settings.c b/src/backends/meta-input-settings.c
+index d41b5def2c..6d345a8bec 100644
+--- a/src/backends/meta-input-settings.c
++++ b/src/backends/meta-input-settings.c
+@@ -1376,7 +1376,7 @@ meta_input_keyboard_a11y_settings_changed (GSettings  *settings,
+ static GSettings *
+ lookup_device_settings (ClutterInputDevice *device)
+ {
+-  const gchar *group, *schema;
++  const gchar *group, *schema, *custom_id;
+   guint vendor, product;
+   ClutterInputCapabilities capabilities;
+   GSettings *settings;
+@@ -1403,8 +1403,18 @@ lookup_device_settings (ClutterInputDevice *device)
+ 
+   vendor = clutter_input_device_get_vendor_id (device);
+   product = clutter_input_device_get_product_id (device);
+-  path = g_strdup_printf ("/org/gnome/desktop/peripherals/%s/%.4x:%.4x/",
+-                          group, vendor, product);
++  custom_id = clutter_input_device_get_custom_id (device);
++
++  if (!custom_id)
++    {
++      path = g_strdup_printf ("/org/gnome/desktop/peripherals/%s/%.4x:%.4x/",
++                        group, vendor, product);
++    }
++  else
++    {
++      path = g_strdup_printf ("/org/gnome/desktop/peripherals/%s/%s/",
++                          group, custom_id);
++    }
+ 
+   settings = g_settings_new_with_path (schema, path);
+   g_free (path);
+diff --git a/src/backends/native/meta-input-device-native.c b/src/backends/native/meta-input-device-native.c
+index 6fc295fd9e..e2ba10da19 100644
+--- a/src/backends/native/meta-input-device-native.c
++++ b/src/backends/native/meta-input-device-native.c
+@@ -1512,6 +1512,7 @@ meta_input_device_native_new_in_impl (MetaSeatImpl           *seat_impl,
+   ClutterInputCapabilities capabilities;
+   ClutterInputMode mode;
+   unsigned int vendor, product, bustype;
++  char *custom_id;
+   int n_rings = 0, n_strips = 0, n_dials = 0, n_groups = 1, n_buttons = 0;
+   char *node_path;
+   double width, height;
+@@ -1521,6 +1522,7 @@ meta_input_device_native_new_in_impl (MetaSeatImpl           *seat_impl,
+   vendor = libinput_device_get_id_vendor (libinput_device);
+   product = libinput_device_get_id_product (libinput_device);
+   bustype = libinput_device_get_id_bustype (libinput_device);
++  custom_id = udev_device_get_property_value (libinput_device_get_udev_device (libinput_device), "CUSTOM_ID");
+   node_path = g_strdup_printf ("/dev/input/%s", libinput_device_get_sysname (libinput_device));
+ 
+   if (libinput_device_has_capability (libinput_device,
+@@ -1548,6 +1550,7 @@ meta_input_device_native_new_in_impl (MetaSeatImpl           *seat_impl,
+                          "vendor-id", vendor,
+                          "product-id", product,
+                          "bus-type", bustype,
++                         "custom_id", custom_id,
+                          "n-rings", n_rings,
+                          "n-strips", n_strips,
+                          "n-dials", n_dials,
+diff --git a/src/core/meta-pad-action-mapper.c b/src/core/meta-pad-action-mapper.c
+index fcd4f4a541..474e628d5c 100644
+--- a/src/core/meta-pad-action-mapper.c
++++ b/src/core/meta-pad-action-mapper.c
+@@ -162,15 +162,27 @@ get_pad_feature_gsettings (ClutterInputDevice *device,
+   GSettings *settings;
+   g_autofree char *path = NULL;
+   guint vendor, product;
++  const gchar *custom_id;
+   char tag;
+ 
+   tag = 'A' + feature_number;
+   vendor = clutter_input_device_get_vendor_id (device);
+   product = clutter_input_device_get_product_id (device);
++  custom_id = clutter_input_device_get_custom_id (device);
++
++  if (!custom_id)
++    {
++      path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%.4x:%.4x/%s%c%s/",
++                              vendor, product, feature, tag,
++                              suffix ? suffix : "");
++    }
++  else
++    {
++      path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%s/%s%c%s/",
++                        custom_id, feature, tag,
++                        suffix ? suffix : "");
++    }
+ 
+-  path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%.4x:%.4x/%s%c%s/",
+-                          vendor, product, feature, tag,
+-                          suffix ? suffix : "");
+   settings = g_settings_new_with_path ("org.gnome.desktop.peripherals.tablet.pad-button",
+                                        path);
+ 
+diff --git a/src/core/meta-tablet-action-mapper.c b/src/core/meta-tablet-action-mapper.c
+index b02fd0c4da..2d31497cc2 100644
+--- a/src/core/meta-tablet-action-mapper.c
++++ b/src/core/meta-tablet-action-mapper.c
+@@ -208,13 +208,24 @@ static GSettings *
+ lookup_device_settings (ClutterInputDevice *device)
+ {
+   guint vendor, product;
++  const char *custom_id;
+   GSettings *settings;
+   char *path;
+ 
+   vendor = clutter_input_device_get_vendor_id (device);
+   product = clutter_input_device_get_product_id (device);
+-  path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%.4x:%.4x/",
+-                          vendor, product);
++  custom_id = clutter_input_device_get_custom_id (device);
++
++  if (!custom_id)
++    {
++      path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%.4x:%.4x/",
++                              vendor, product);
++    }
++  else
++    {
++      path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%s/",
++                        custom_id);
++    }
+ 
+   settings = g_settings_new_with_path ("org.gnome.desktop.peripherals.tablet",
+                                        path);

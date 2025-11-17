@@ -46,13 +46,17 @@ Reference: [Kernel Bugzilla](https://bugzilla.kernel.org/show_bug.cgi?id=220386)
 
 ### 1. Apply Kernel Patch
 
-Until upstreamed, you must manually apply the kerenl [patch](/patches/yogabook9i-hid-6.17.5.patch) to add the appropriate quirks to the device.
+Until upstreamed, you must manually apply the kernel [patch](/patches/yogabook9i-hid.patch) to add the appropriate quirks to the device.
 
 This is very distribution specific and I will not support this step.
 
 ### 2. Apply udev rules
 
-You must apply udev rules to ensure that libinput groups the devices by the physical screen instead of all as one device.
+You must apply udev rules to:
+
+- Ensure that libinput groups the devices by the physical screen instead of all as one device
+- Supply a CUSTOM_ID that allows the devices to be differentiated in window managers
+- Apply a matrix to the top touch and tablet
 
 #### NixOS
 
@@ -61,10 +65,10 @@ You must apply udev rules to ensure that libinput groups the devices by the phys
 
 {
   services.udev.extraRules = ''     
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"    
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top", ENV{CUSTOM_ID}="touch_top", ENV{LIBINPUT_CALIBRATION_MATRIX}="-1 0 1 0 -1 1 0 0 1"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top", ENV{CUSTOM_ID}="tablet_top", ENV{LIBINPUT_CALIBRATION_MATRIX}="-1 0 1 0 -1 1 0 0 1"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom", ENV{CUSTOM_ID}="touch_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom", ENV{CUSTOM_ID}="tablet_bottom"
     ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Keyboard", ENV{LIBINPUT_IGNORE_DEVICE}="1"
     ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Emulated Touchpad", ENV{LIBINPUT_IGNORE_DEVICE}="1"
   '';
@@ -79,10 +83,10 @@ sudo nixos-rebuild switch
 
 ```bash
 
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top"    
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
-    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top", ENV{CUSTOM_ID}="touch_top", ENV{LIBINPUT_CALIBRATION_MATRIX}="-1 0 1 0 -1 1 0 0 1"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Top", ENV{LIBINPUT_DEVICE_GROUP}="group_top", ENV{CUSTOM_ID}="tablet_top", ENV{LIBINPUT_CALIBRATION_MATRIX}="-1 0 1 0 -1 1 0 0 1"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Touchscreen Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom", ENV{CUSTOM_ID}="touch_bottom"
+    ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Stylus Bottom", ENV{LIBINPUT_DEVICE_GROUP}="group_bottom", ENV{CUSTOM_ID}="tablet_bottom"
     ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Keyboard", ENV{LIBINPUT_IGNORE_DEVICE}="1"
     ACTION=="add", SUBSYSTEM=="input", ATTRS{name}=="INGENIC Gadget Serial and keyboard Emulated Touchpad", ENV{LIBINPUT_IGNORE_DEVICE}="1"
 
@@ -213,9 +217,40 @@ Area rectangle:          n/a
 
 ### 3. (Option 1) Patch Gnome
 
-To come
+Both touch and stylus are now fully functional under gnome, once patches are applied. You must patch:
 
-Testing: [AI Generated Summary - Do Not Use](/gnome_issue.md)
+- [mutter](/patches/mutter.patch)
+- [gnome-control-center](/patches/gnome-control-center.patch)
+
+After restarting you must then tell gnome which screens are targeted by which touch/tablet.
+
+In Control Center -> Graphics Tablets, change the first Ingenic Touch/Pen display to Map to Monitor to eDP-1, and the second to Map to Monitor to eDP-2. Disable Keep Aspect Ratio for each.
+
+Then, for the touchscreens, in a terminal execute the following to retrieve the correct mappings from the tablets:
+
+```bash
+
+gsettings get org.gnome.desktop.peripherals.tablet:/org/gnome/desktop/peripherals/tablets/tablet_top/ output
+
+gsettings get org.gnome.desktop.peripherals.tablet:/org/gnome/desktop/peripherals/tablets/tablet_bottom/ output
+
+```
+
+Those should output something like:
+
+['BOE', 'NB140B9M-A62', '0x00000000', 'eDP-1']
+
+['BOE', 'NB140B9M-A63', '0x00000000', 'eDP-2']
+
+Then in a terminal:
+
+```bash
+
+gsettings set org.gnome.desktop.peripherals.touchscreen:/org/gnome/desktop/peripherals/touchscreens/touch_top/ output "['BOE', 'NB140B9M-A62', '0x00000000', 'eDP-1']"
+
+gsettings set org.gnome.desktop.peripherals.touchscreen:/org/gnome/desktop/peripherals/touchscreens/touch_bottom/ output "['BOE', 'NB140B9M-A63', '0x00000000', 'eDP-2']"
+
+```
 
 ### 3. (Option 2) Patch KDE
 

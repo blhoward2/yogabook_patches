@@ -1,0 +1,224 @@
+diff --git a/panels/common/gsd-device-manager.c b/panels/common/gsd-device-manager.c
+index 77a1539ce..1709b7ef6 100644
+--- a/panels/common/gsd-device-manager.c
++++ b/panels/common/gsd-device-manager.c
+@@ -42,6 +42,7 @@ typedef struct
+ 	gchar *device_file;
+ 	gchar *vendor_id;
+ 	gchar *product_id;
++    gchar *custom_id;
+ 	gchar *group;
+ 	GsdDeviceType type;
+ 	guint width;
+@@ -62,6 +63,7 @@ enum {
+ 	PROP_DEVICE_FILE,
+ 	PROP_VENDOR_ID,
+ 	PROP_PRODUCT_ID,
++    PROP_CUSTOM_ID,
+ 	PROP_TYPE,
+ 	PROP_WIDTH,
+ 	PROP_HEIGHT,
+@@ -118,7 +120,10 @@ gsd_device_set_property (GObject      *object,
+ 	case PROP_PRODUCT_ID:
+ 		priv->product_id = g_value_dup_string (value);
+ 		break;
+-	case PROP_TYPE:
++	case PROP_CUSTOM_ID:
++		priv->custom_id = g_value_dup_string (value);
++		break;
++    case PROP_TYPE:
+ 		priv->type = g_value_get_flags (value);
+ 		break;
+ 	case PROP_WIDTH:
+@@ -159,7 +164,10 @@ gsd_device_get_property (GObject    *object,
+ 	case PROP_PRODUCT_ID:
+ 		g_value_set_string (value, priv->product_id);
+ 		break;
+-	case PROP_TYPE:
++	case PROP_CUSTOM_ID:
++		g_value_set_string (value, priv->custom_id);
++		break;
++    case PROP_TYPE:
+ 		g_value_set_flags (value, priv->type);
+ 		break;
+ 	case PROP_WIDTH:
+@@ -187,6 +195,7 @@ gsd_device_finalize (GObject *object)
+ 	g_free (priv->name);
+ 	g_free (priv->vendor_id);
+ 	g_free (priv->product_id);
++    g_free (priv->custom_id);
+ 	g_free (priv->device_file);
+ 	g_free (priv->group);
+ 
+@@ -235,6 +244,14 @@ gsd_device_class_init (GsdDeviceClass *klass)
+ 							      G_PARAM_READWRITE |
+ 							      G_PARAM_CONSTRUCT_ONLY));
+ 	g_object_class_install_property (object_class,
++					 PROP_CUSTOM_ID,
++					 g_param_spec_string ("custom-id",
++							      "Custom ID",
++							      "Custom ID",
++							      NULL,
++							      G_PARAM_READWRITE |
++							      G_PARAM_CONSTRUCT_ONLY));
++    g_object_class_install_property (object_class,
+ 					 PROP_TYPE,
+ 					 g_param_spec_flags ("type",
+ 							     "Device type",
+@@ -422,12 +439,13 @@ device_is_evdev (GUdevDevice *device)
+ static GsdDevice *
+ create_device (GUdevDevice *udev_device, GUdevDevice *parent)
+ {
+-	const gchar *vendor, *product, *name, *group;
++	const gchar *vendor, *product, *custom_id, *name, *group;
+ 	guint width, height;
+ 
+ 	name = g_udev_device_get_sysfs_attr (parent, "name");
+ 	vendor = g_udev_device_get_sysfs_attr (udev_device, "device/id/vendor");
+ 	product = g_udev_device_get_sysfs_attr (udev_device, "device/id/product");
++    custom_id = g_udev_device_get_property (udev_device, "CUSTOM_ID");
+ 
+ 	if (!vendor || !product) {
+ 		vendor = g_udev_device_get_property (udev_device, "ID_VENDOR_ID");
+@@ -445,6 +463,7 @@ create_device (GUdevDevice *udev_device, GUdevDevice *parent)
+ 			     "type", udev_device_get_device_type (udev_device),
+ 			     "vendor-id", vendor,
+ 			     "product-id", product,
++                 "custom-id", custom_id,
+ 			     "width", width,
+ 			     "height", height,
+ 			     "group", group,
+@@ -580,7 +599,8 @@ gsd_device_get_device_type (GsdDevice *device)
+ void
+ gsd_device_get_device_ids (GsdDevice	*device,
+ 			   const gchar **vendor,
+-			   const gchar **product)
++			   const gchar **product,
++			   const gchar **custom_id)
+ {
+ 	GsdDevicePrivate *priv;
+ 
+@@ -592,13 +612,16 @@ gsd_device_get_device_ids (GsdDevice	*device,
+ 		*vendor = priv->vendor_id;
+ 	if (product)
+ 		*product = priv->product_id;
++    if (custom_id)
++		*custom_id = priv->custom_id;
+ }
+ 
+ GSettings *
+ gsd_device_get_settings (GsdDevice *device)
+ {
+-	const gchar *schema = NULL, *vendor, *product;
++	const gchar *schema = NULL, *vendor, *product, *custom_id;
+ 	GsdDeviceType type;
++    g_autofree gchar *path_id = NULL;
+ 	g_autofree gchar *path = NULL;
+ 
+ 	g_return_val_if_fail (GSD_IS_DEVICE (device), NULL);
+@@ -606,16 +629,19 @@ gsd_device_get_settings (GsdDevice *device)
+ 	type = gsd_device_get_device_type (device);
+ 
+ 	if (type & (GSD_DEVICE_TYPE_TOUCHSCREEN | GSD_DEVICE_TYPE_TABLET)) {
+-		gsd_device_get_device_ids (device, &vendor, &product);
++		gsd_device_get_device_ids (device, &vendor, &product, &custom_id);
++
++        if (!custom_id) path_id = g_strdup_printf ("%s:%s", vendor, product);
++        else path_id = g_strdup_printf ("%s", custom_id);
+ 
+ 		if (type & GSD_DEVICE_TYPE_TOUCHSCREEN) {
+ 			schema = "org.gnome.desktop.peripherals.touchscreen";
+-			path = g_strdup_printf ("/org/gnome/desktop/peripherals/touchscreens/%s:%s/",
+-						vendor, product);
++			path = g_strdup_printf ("/org/gnome/desktop/peripherals/touchscreens/%s/",
++						path_id);
+ 		} else if (type & GSD_DEVICE_TYPE_TABLET) {
+ 			schema = "org.gnome.desktop.peripherals.tablet";
+-			path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%s:%s/",
+-						vendor, product);
++			path = g_strdup_printf ("/org/gnome/desktop/peripherals/tablets/%s/",
++						path_id);
+ 		}
+ 	} else if (type & (GSD_DEVICE_TYPE_MOUSE | GSD_DEVICE_TYPE_TOUCHPAD)) {
+ 		schema = "org.gnome.desktop.peripherals.mouse";
+diff --git a/panels/common/gsd-device-manager.h b/panels/common/gsd-device-manager.h
+index 8d1c062ef..3dfc08504 100644
+--- a/panels/common/gsd-device-manager.h
++++ b/panels/common/gsd-device-manager.h
+@@ -71,7 +71,8 @@ const gchar *	   gsd_device_get_name	      (GsdDevice  *device);
+ GsdDeviceType	   gsd_device_get_device_type (GsdDevice  *device);
+ void		   gsd_device_get_device_ids  (GsdDevice    *device,
+ 					       const gchar **vendor,
+-					       const gchar **product);
++					       const gchar **product,
++					       const gchar **custom_id);
+ GSettings *	   gsd_device_get_settings    (GsdDevice  *device);
+ 
+ const gchar *	   gsd_device_get_device_file (GsdDevice  *device);
+diff --git a/panels/wacom/cc-tablet-tool-map.c b/panels/wacom/cc-tablet-tool-map.c
+index bdc51b971..b69747d71 100644
+--- a/panels/wacom/cc-tablet-tool-map.c
++++ b/panels/wacom/cc-tablet-tool-map.c
+@@ -222,13 +222,14 @@ cc_tablet_tool_map_new (void)
+ static gchar *
+ get_device_key (CcWacomDevice *device)
+ {
+-	const gchar *vendor, *product;
++	const gchar *vendor, *product, *custom_id;
+ 	GsdDevice *gsd_device;
+ 
+ 	gsd_device = cc_wacom_device_get_device (device);
+-	gsd_device_get_device_ids (gsd_device, &vendor, &product);
++	gsd_device_get_device_ids (gsd_device, &vendor, &product, &custom_id);
+ 
+-	return g_strdup_printf ("%s:%s", vendor, product);
++    if (!custom_id) return g_strdup_printf ("%s:%s", vendor, product);
++    else return g_strdup_printf ("%s", custom_id);
+ }
+ 
+ static gchar *
+diff --git a/panels/wacom/cc-wacom-page.c b/panels/wacom/cc-wacom-page.c
+index f8d01d6e8..b60575c1e 100644
+--- a/panels/wacom/cc-wacom-page.c
++++ b/panels/wacom/cc-wacom-page.c
+@@ -724,8 +724,8 @@ static void
+ check_add_pad (CcWacomPage *page,
+ 	       GsdDevice   *gsd_device)
+ {
+-	const gchar *stylus_vendor, *stylus_product;
+-	const gchar *pad_vendor, *pad_product;
++	const gchar *stylus_vendor, *stylus_product, *stylus_custom_id;
++	const gchar *pad_vendor, *pad_product, *pad_custom_id;
+ 	GsdDevice *stylus_device;
+ 
+ 	if ((gsd_device_get_device_type (gsd_device) & GSD_DEVICE_TYPE_PAD) == 0)
+@@ -733,12 +733,13 @@ check_add_pad (CcWacomPage *page,
+ 
+ 	stylus_device = cc_wacom_device_get_device (page->stylus);
+ 	gsd_device_get_device_ids (cc_wacom_device_get_device (page->stylus),
+-				   &stylus_vendor, &stylus_product);
+-	gsd_device_get_device_ids (gsd_device, &pad_vendor, &pad_product);
++				   &stylus_vendor, &stylus_product, &stylus_custom_id);
++	gsd_device_get_device_ids (gsd_device, &pad_vendor, &pad_product, &stylus_custom_id);
+ 
+ 	if (!gsd_device_shares_group (stylus_device, gsd_device) ||
+ 	    g_strcmp0 (stylus_vendor, pad_vendor) != 0 ||
+-	    g_strcmp0 (stylus_product, pad_product) != 0)
++	    g_strcmp0 (stylus_product, pad_product) != 0 ||
++	    g_strcmp0 (stylus_custom_id, pad_custom_id) != 0)
+ 		return;
+ 
+ 	page->pad = cc_wacom_device_new (gsd_device);
+diff --git a/panels/wacom/cc-wacom-tool.c b/panels/wacom/cc-wacom-tool.c
+index 939b53e7f..2b088bf0b 100644
+--- a/panels/wacom/cc-wacom-tool.c
++++ b/panels/wacom/cc-wacom-tool.c
+@@ -224,7 +224,7 @@ cc_wacom_tool_initable_init (GInitable     *initable,
+ 		GsdDevice *gsd_device;
+ 
+ 		gsd_device = cc_wacom_device_get_device (tool->device);
+-		gsd_device_get_device_ids (gsd_device, &vendor, &product);
++		gsd_device_get_device_ids (gsd_device, &vendor, &product, NULL);
+ 		path = g_strdup_printf ("/org/gnome/desktop/peripherals/stylus/default-%s:%s/",
+ 					vendor, product);
+         } else {
