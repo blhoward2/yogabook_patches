@@ -11,16 +11,10 @@ Use rEFInd Boot Manager to allow for touch at the bootloader stage.
 You need to use the following kernel command-line arguments when booting:
 
     mem_sleep_default=deep
-    reboot=pci
-    apm=power_off
-    i915.force_probe=7d51
-    i915.enable_psr=1
-    i915.enable_fbc=1
-    i915.enable_dc=3
-    i915.modeset=1
-    nomodeset=0
-    vga=off
+    i915.force_probe=!7d51
+    xe.force_probe=7d51
     video=eDP-1:panel_orientation=upside_down
+    xe.enable_dpcd_backlight=2
 
 ### NixOS
 
