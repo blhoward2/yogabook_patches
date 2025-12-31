@@ -30,21 +30,22 @@ index a9ff84f0b..cdf1c1351 100644
  #define MT_CLS_SIS				0x0457
  
  #define MT_DEFAULT_MAXCONTACT	10
-@@ -421,6 +423,14 @@ static const struct mt_class mt_classes[] = {
+@@ -424,6 +426,15 @@ static const struct mt_class mt_classes[] = {
+ 		.quirks = MT_QUIRK_NOT_SEEN_MEANS_UP |
  			MT_QUIRK_ALWAYS_VALID |
  			MT_QUIRK_CONTACT_CNT_ACCURATE,
- 	},
++	},
 +	{ .name = MT_CLS_YOGABOOK9I,
 +		.quirks = MT_QUIRK_ALWAYS_VALID |
 +			MT_QUIRK_FORCE_MULTI_INPUT |
 +			MT_QUIRK_SEPARATE_APP_REPORT |
 +			MT_QUIRK_HOVERING |
++			MT_QUIRK_CONTACT_CNT_ACCURATE |
 +			MT_QUIRK_YOGABOOK9I,
-+		.export_all_inputs = true 
-+	},
++		.export_all_inputs = true
+ 	},
  	{ }
- };
- 
+ }; 
 @@ -1542,6 +1552,37 @@ static void mt_report(struct hid_device *hid, struct hid_report *report)
  	if (rdata && rdata->is_mt_collection)
  		return mt_touch_report(hid, rdata);
